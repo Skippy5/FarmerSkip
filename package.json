@@ -1,0 +1,25 @@
+{
+  "name": "farmer-skip-game",
+  "version": "1.0.0",
+  "description": "Farmer Skip's Eggcellent Adventure - A JavaScript Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "http-server -p 8080"
+  },
+  "keywords": [
+    "game",
+    "browser-game",
+    "javascript",
+    "html5"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "http-server": "^14.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+} 

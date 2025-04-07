@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Farmer Skip</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Open+Sans&display=swap" rel="stylesheet">
+    <!-- Disable all audio functionality -->
+    <script>
+        // Override Audio constructor to prevent sounds
+        window.AudioContext = function() { return {}; };
+        window.webkitAudioContext = function() { return {}; };
+        
+        // Create a dummy Audio class that does nothing
+        window.Audio = function() {
+            return {
+                play: function() { return Promise.resolve(); },
+                pause: function() {},
+                load: function() {},
+                addEventListener: function() {},
+                cloneNode: function() { return this; },
+                volume: 0
+            };
+        };
+        
+        console.log("All sounds disabled via Audio API override");
+    </script>
+    <style>
+        /* Prevent text selection and other browser behaviors */
+        body, #game-board, #game-container {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: manipulation;
+            overscroll-behavior: none;
+        }
+        #game-board {
+            cursor: crosshair;
+        }
+        
+        /* Game screen styles */
+        .game-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(232, 245, 224, 0.95);
+            border: 3px solid #3a7d44;
+            z-index: 100;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+            font-family: 'Open Sans', sans-serif;
+        }
+        
+        .game-screen h2 {
+            font-family: 'Fredoka One', cursive;
+            color: #3a7d44;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        
+        .game-screen p {
+            margin: 8px 0;
+            font-size: 18px;
+        }
+        
+        .game-screen button {
+            background-color: #3a7d44;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 12px 24px;
+            margin-top: 20px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: 'Fredoka One', cursive;
+            transition: all 0.2s;
+        }
+        
+        .game-screen button:hover {
+            background-color: #4c8f56;
+            transform: scale(1.05);
+        }
+        
+        #start-screen {
+            background-image: url('https://img.freepik.com/free-vector/farm-scene-with-barn-windmill_1308-26823.jpg');
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: lighten;
+            background-color: rgba(255, 255, 255, 0.85);
+        }
+        
+        #level-screen .level-stats {
+            background-color: #3a7d44;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        
+        #end-screen .final-score {
+            font-size: 28px;
+            color: #3a7d44;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐔 Farmer Skip's Eggcellent Adventure 🥚</h1>
+    
+    <div id="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="game-screen">
+            <h2>🐔 Farmer Skip's Eggcellent Adventure 🥚</h2>
+            <p>Help Farmer Skip collect eggs before the snake gets them!</p>
+            <p>Use arrow keys or WASD to move, and click to shoot!</p>
+            <button id="start-button">🚜 Start Game</button>
+        </div>
+        
+        <!-- Level Transition Screen -->
+        <div id="level-screen" class="game-screen hidden">
+            <h2>Level <span id="completed-level">1</span> Completed!</h2>
+            <div class="level-stats">
+                <p>Eggs Collected: <span id="level-eggs-collected">0</span></p>
+                <p>Score: <span id="level-score">0</span></p>
+            </div>
+            <p>Get ready for Level <span id="next-level">2</span>!</p>
+            <p id="level-challenge">More chickens and obstacles await!</p>
+            <button id="continue-button">🥚 Continue</button>
+        </div>
+        
+        <!-- End Screen -->
+        <div id="end-screen" class="game-screen hidden">
+            <h2 id="end-title">Game Over!</h2>
+            <p id="end-message">The snake has eaten too many eggs!</p>
+            <p class="final-score">Total Score: <span id="final-score">0</span></p>
+            <p>You reached Level <span id="final-level">1</span></p>
+            <button id="play-again-button">🔄 Play Again</button>
+        </div>
+        
+        <div id="game-info">
+            <div>
+                <p>🧺 Eggs: <span id="eggs-collected-count">0</span>/<span id="eggs-needed">5</span></p>
+                <p>🐍 Snake Eggs: <span id="snake-eggs">0</span>/<span id="snake-limit">5</span></p>
+                <p>🏅 Total Score: <span id="total-score">0</span></p>
+                <p>❤️ Lives: <span id="lives">3</span></p>
+            </div>
+            <div>
+                <p>🏆 Level: <span id="level">1</span></p>
+                <p>🎮 Controls: Arrow Keys or WASD</p>
+            </div>
+        </div>
+        
+        <div id="game-board"></div>
+        
+        <div id="message"></div>
+        
+        <button id="restart-button">🔄 New Game</button>
+    </div>
+    
+    <div id="instructions">
+        <p>Help Farmer Skip collect eggs before the snake gets them!</p>
+        <p><strong>Goal:</strong> Collect the required number of eggs to advance. Watch out for the snake!</p>
+        <p><strong>Egg Types:</strong> 🥚 Normal (1pt), <span style="color: #FFD700">🥚 Golden (3pts)</span>, <span style="color: #FF69B4">🥚 Special (5pts)</span>. All eggs count as 1 towards the level goal.</p>
+        <p><strong>Power-ups:</strong> ⚡ Speed, 🛡️ Shield, 🧲 Magnet, ❄️ Freeze Snake</p>
+        <p><strong>Tips:</strong> Collect eggs quickly for combo points! Avoid the snake and rocks. Each level adds more challenges!</p>
+        <p><strong>New Feature:</strong> Click to shoot bullets at enemies! Shooting the snake, rooster, or weasel will earn you points.</p>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html> 
