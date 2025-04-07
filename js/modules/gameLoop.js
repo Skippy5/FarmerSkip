@@ -6,7 +6,7 @@ import { moveSnake, moveRooster, spawnRooster, moveWeasels, spawnWeasel } from '
 import { updateBullets } from './weapons.js';
 import { updatePowerUpTimer, spawnPowerUp } from './powerups.js';
 import { checkCollisions } from './collision.js';
-import { drawGame } from './board.js';
+import { drawGame, isOverlapping } from './board.js';
 import { updatePowerUpUI } from './ui.js';
 
 // Start all game loops
@@ -90,36 +90,70 @@ function setupIntervals() {
 function updateChickens() {
     const { chickens, eggs, currentEggLayTimeMin, currentEggLayTimeMax } = gameState;
     
+    // Skip if no chickens
+    if (!chickens || chickens.length === 0) {
+        return;
+    }
+    
     // Loop through each chicken
     for (let i = 0; i < chickens.length; i++) {
         const chicken = chickens[i];
+        
+        // Skip invalid chickens
+        if (!chicken || typeof chicken.x !== 'number' || typeof chicken.y !== 'number') {
+            continue;
+        }
         
         // Move chicken randomly
         moveChickenRandomly(chicken);
         
         // Update egg cooldown
+        if (typeof chicken.eggCooldown !== 'number') {
+            chicken.eggCooldown = 2000; // Default cooldown
+        }
+        
         chicken.eggCooldown -= intervals.enemyMove;
         
         // Lay egg if cooldown expired
         if (chicken.eggCooldown <= 0) {
-            // Check if max eggs limit reached (prevent too many eggs)
-            if (eggs.length < 20) { // Arbitrary limit to prevent too many eggs
-                layEgg(chicken);
+            // Check if max eggs limit reached
+            if (eggs.length < 20) {
+                // Create egg with default type if needed
+                if (!chicken.eggType) {
+                    chicken.eggType = 'normal';
+                }
+                
+                // Add the egg directly - simplified for reliability
+                eggs.push({
+                    x: chicken.x,
+                    y: chicken.y,
+                    type: chicken.eggType
+                });
+                
+                // Reset cooldown (ensure it's a reasonable number)
+                chicken.eggCooldown = Math.max(1000, 
+                    Math.floor(Math.random() * (currentEggLayTimeMax - currentEggLayTimeMin + 1)) + currentEggLayTimeMin
+                );
+                
+                // Determine new egg type
+                chicken.eggType = determineEggType();
+            } else {
+                // Too many eggs, just reset cooldown
+                chicken.eggCooldown = 2000;
             }
-            
-            // Reset cooldown
-            chicken.eggCooldown = getRandomEggLayTime(currentEggLayTimeMin, currentEggLayTimeMax);
-            
-            // Determine new egg type
-            chicken.eggType = determineEggType();
         }
     }
 }
 
-// Move a chicken randomly
+// Move a chicken randomly - simplified for reliability
 function moveChickenRandomly(chicken) {
-    // Add dirX and dirY if not present
-    if (chicken.dirX === undefined) {
+    // Skip invalid chickens
+    if (!chicken || typeof chicken.x !== 'number' || typeof chicken.y !== 'number') {
+        return;
+    }
+    
+    // Add direction if missing
+    if (typeof chicken.dirX !== 'number' || typeof chicken.dirY !== 'number') {
         chicken.dirX = Math.random() * 2 - 1;
         chicken.dirY = Math.random() * 2 - 1;
         
@@ -131,22 +165,26 @@ function moveChickenRandomly(chicken) {
         }
     }
     
-    // Calculate displacement
-    const displacement = getDisplacement(50, intervals.enemyMove); // Chicken speed is slower
+    // Hard-coded displacement for reliability (about 1-2 pixels per update)
+    const displacement = 1.5;
     
     // Calculate new position
     let newX = chicken.x + chicken.dirX * displacement;
     let newY = chicken.y + chicken.dirY * displacement;
     
-    // Check if the new position is valid
-    const { boardWidth, boardHeight } = gameState;
+    // Get board dimensions - use default if missing
+    const boardWidth = gameState.boardWidth || 540;
+    const boardHeight = gameState.boardHeight || 540;
+    
+    // Simple boundary check
     const validX = newX >= 0 && newX + 30 <= boardWidth;
     const validY = newY >= 0 && newY + 30 <= boardHeight;
     
-    // Change direction randomly or when hitting boundary
-    const changeDirectionChance = 0.02; // 2% chance each update
+    // Change direction occasionally or when hitting boundary
+    const changeDirectionChance = 0.03; // 3% chance
     
     if (!validX || !validY || Math.random() < changeDirectionChance) {
+        // New random direction
         chicken.dirX = Math.random() * 2 - 1;
         chicken.dirY = Math.random() * 2 - 1;
         
@@ -157,7 +195,7 @@ function moveChickenRandomly(chicken) {
             chicken.dirY /= length;
         }
         
-        // Adjust position if out of bounds
+        // Keep inside boundaries
         if (!validX) {
             newX = Math.max(0, Math.min(boardWidth - 30, newX));
         }
@@ -166,28 +204,17 @@ function moveChickenRandomly(chicken) {
         }
     }
     
-    // Update position
+    // Update chicken position
     chicken.x = newX;
     chicken.y = newY;
 }
 
-// Lay an egg at the chicken's position
-function layEgg(chicken) {
-    const { eggs } = gameState;
-    
-    // Create egg object
-    const egg = {
-        x: chicken.x,
-        y: chicken.y,
-        type: chicken.eggType
-    };
-    
-    // Add egg to array
-    eggs.push(egg);
-}
-
 // Get a random egg lay time
 function getRandomEggLayTime(min, max) {
+    // Ensure valid inputs
+    min = typeof min === 'number' ? min : 1000;
+    max = typeof max === 'number' ? max : 3000;
+    
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
@@ -209,6 +236,12 @@ function determineEggType() {
 
 // Get the displacement based on speed and interval
 function getDisplacement(speedPerSecond, intervalMs) {
+    // Ensure inputs are valid numbers
+    if (typeof speedPerSecond !== 'number' || typeof intervalMs !== 'number') {
+        return 0;
+    }
+    
+    // Calculate and return displacement
     return (speedPerSecond * intervalMs) / 1000;
 }
 

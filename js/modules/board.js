@@ -142,17 +142,49 @@ function placeObstacles(count) {
 
 // Place chickens on the board
 function placeChickens(count) {
+    console.log(`Attempting to place ${count} chickens on the board`);
+    
+    // First check if the game state is valid
+    if (!gameState || !Array.isArray(gameState.chickens)) {
+        console.error("Invalid game state for placing chickens:", gameState);
+        return 0;
+    }
+    
+    let successfulPlacements = 0;
+    
     for (let i = 0; i < count; i++) {
-        placeSingleChicken(getRandomWaitTime(
+        const cooldown = getRandomWaitTime(
             gameState.currentEggLayTimeMin, 
             gameState.currentEggLayTimeMax
-        ));
+        );
+        
+        if (placeSingleChicken(cooldown)) {
+            successfulPlacements++;
+        }
     }
+    
+    console.log(`Successfully placed ${successfulPlacements}/${count} chickens`);
+    return successfulPlacements;
 }
 
 // Place a single chicken with the given egg cooldown
 function placeSingleChicken(cooldown) {
     const { boardWidth, boardHeight } = gameState;
+    
+    console.log(`Attempting to place chicken with cooldown ${cooldown}`);
+    console.log(`Board dimensions: ${boardWidth}x${boardHeight}`);
+    
+    // Validate board dimensions
+    if (!boardWidth || !boardHeight || typeof boardWidth !== 'number' || typeof boardHeight !== 'number') {
+        console.error("Invalid board dimensions:", boardWidth, boardHeight);
+        return false;
+    }
+    
+    // Validate chicken size
+    if (!entitySizes.chicken || typeof entitySizes.chicken.width !== 'number') {
+        console.error("Invalid chicken size:", entitySizes.chicken);
+        return false;
+    }
     
     let x, y;
     let attempts = 0;
@@ -165,6 +197,10 @@ function placeSingleChicken(cooldown) {
         
         validPosition = isPositionValid(x, y, entitySizes.chicken);
         attempts++;
+        
+        if (attempts % 5 === 0) {
+            console.log(`Made ${attempts} attempts to place chicken, current try: (${x}, ${y}), valid: ${validPosition}`);
+        }
     }
     
     if (validPosition) {
@@ -175,13 +211,33 @@ function placeSingleChicken(cooldown) {
         const eggType = determineEggType();
         
         // Add the chicken to the game state
-        gameState.chickens.push({
+        const chicken = {
             x,
             y,
             element: chickenElement,
             eggCooldown: cooldown,
-            eggType
-        });
+            eggType,
+            // Add explicit direction values for movement
+            dirX: Math.random() * 2 - 1,
+            dirY: Math.random() * 2 - 1
+        };
+        
+        // Normalize direction
+        const length = Math.sqrt(chicken.dirX * chicken.dirX + chicken.dirY * chicken.dirY);
+        if (length > 0) {
+            chicken.dirX /= length;
+            chicken.dirY /= length;
+        }
+        
+        // Push to game state
+        gameState.chickens.push(chicken);
+        
+        console.log(`Successfully placed chicken at (${x}, ${y}) with egg type ${eggType} and cooldown ${cooldown}`);
+        console.log(`Total chickens: ${gameState.chickens.length}`);
+        return true;
+    } else {
+        console.warn(`Failed to place chicken after ${attempts} attempts`);
+        return false;
     }
 }
 

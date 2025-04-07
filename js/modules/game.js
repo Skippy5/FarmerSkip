@@ -185,7 +185,11 @@ function initializeGame() {
 
 // Set up a level
 function setupLevel() {
-    console.log("Setting up level:", gameState.level);
+    console.log("====== SETTING UP LEVEL ======");
+    console.log(`Setting up level ${gameState.level} with board size ${gameState.boardWidth}x${gameState.boardHeight}`);
+    
+    // Log current state before clearing
+    console.log(`Current state: ${gameState.chickens.length} chickens, ${gameState.eggs.length} eggs, ${gameState.obstacles.length} obstacles`);
     
     // Clear the board first
     clearBoard();
@@ -204,6 +208,7 @@ function setupLevel() {
         const newHeight = Math.min(gameState.maxBoardHeight, 18 * gameState.cellSize + (gameState.level - 1) * gameState.cellSize);
         gameState.boardWidth = newWidth;
         gameState.boardHeight = newHeight;
+        console.log(`Resized board to ${newWidth}x${newHeight}`);
     }
     
     // Create the board with the new size
@@ -214,6 +219,7 @@ function setupLevel() {
     const obstaclesPerLevel = 2;
     const maxObstacles = 15;
     const numObstacles = Math.min(baseObstacles + (gameState.level - 1) * obstaclesPerLevel, maxObstacles);
+    console.log(`Placing ${numObstacles} obstacles for level ${gameState.level}`);
     
     // Place obstacles
     placeObstacles(numObstacles);
@@ -222,9 +228,32 @@ function setupLevel() {
     const baseChickens = 2;
     const chickensPerLevel = 1;
     gameState.numChickens = Math.min(baseChickens + (gameState.level - 1) * chickensPerLevel, gameState.maxChickens);
+    console.log(`Should place ${gameState.numChickens} chickens for level ${gameState.level}`);
     
     // Place chickens
-    placeChickens(gameState.numChickens);
+    const placedChickens = placeChickens(gameState.numChickens);
+    console.log(`Actually placed ${placedChickens} chickens`);
+    
+    // Check if chickens have been placed correctly
+    if (gameState.chickens.length === 0) {
+        console.error("CRITICAL ERROR: No chickens were placed! Trying emergency placement...");
+        // Try emergency placement with simple values
+        for (let i = 0; i < gameState.numChickens; i++) {
+            const x = 100 + i * 50;
+            const y = 100 + i * 50;
+            
+            gameState.chickens.push({
+                x,
+                y,
+                element: createGameElement('chicken', x, y),
+                eggCooldown: 2000,
+                eggType: 'normal',
+                dirX: Math.random() * 2 - 1,
+                dirY: Math.random() * 2 - 1
+            });
+        }
+        console.log(`Emergency placement added ${gameState.chickens.length} chickens`);
+    }
     
     // Adjust eggs needed based on level
     const baseEggsNeeded = 5;
@@ -241,6 +270,16 @@ function setupLevel() {
     // Adjust egg laying time based on level (chickens lay eggs faster in higher levels)
     gameState.currentEggLayTimeMin = Math.max(intervals.eggLayTimeMin - (gameState.level - 1) * 100, 500);
     gameState.currentEggLayTimeMax = Math.max(intervals.eggLayTimeMax - (gameState.level - 1) * 200, 1500);
+    
+    // Ensure egg lay times are valid numbers
+    if (typeof gameState.currentEggLayTimeMin !== 'number' || isNaN(gameState.currentEggLayTimeMin)) {
+        gameState.currentEggLayTimeMin = 1000;
+    }
+    if (typeof gameState.currentEggLayTimeMax !== 'number' || isNaN(gameState.currentEggLayTimeMax)) {
+        gameState.currentEggLayTimeMax = 3000;
+    }
+    
+    console.log(`Egg laying times: min=${gameState.currentEggLayTimeMin}ms, max=${gameState.currentEggLayTimeMax}ms`);
     
     // Reset level values
     gameState.eggsCollectedThisLevel = 0;
